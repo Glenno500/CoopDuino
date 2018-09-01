@@ -111,10 +111,12 @@ long duration;
 int distance;
 
 //time
-  int sleephour = 21;
-  int sleepmin = 30;
-  int wakehour = 6 ;
-  int wakemin = 01;
+  int closeHH = 20;
+  int closeMM = 30;
+  int openHH = 6 ;
+  int openMM = 01;
+
+//
 boolean FALSE = 0;
 boolean TRUE = 1;
 /********************************************************************/
@@ -230,7 +232,9 @@ Serial.print("Distance in cm : ");
 Serial.println(distance);
 
 //NOW adjust door to reach desired states
-if (((now.hour() >= sleephour) || (now.hour() < wakehour )) && (door_state != Door_Closed)) //&& (doorBlocked == FALSE))
+if ((
+    (now.hour() >= closeHH)
+    || (now.hour() < openHH )) && (door_state != Door_Closed)) //&& (doorBlocked == FALSE))
 {
       Serial.println("it's sleep time and the door is open. Closing door");
       Serial.println(door_state);
@@ -252,9 +256,9 @@ if (((now.hour() >= sleephour) || (now.hour() < wakehour )) && (door_state != Do
    
       close_door(); //it's sleep time and the door is open. Closing door
 }
-if (((now.hour() >= wakehour) && (now.hour() < sleephour)) && (door_state != Door_Open))
+if (((now.hour() >= openHH) && (now.hour() < closeHH)) && (door_state != Door_Open))
 {
-     Serial.print("Greater than wakehour, less than sleephour, Door state not open ");
+     Serial.print("Greater than openHH, less than closeHH, Door state not open ");
      Serial.println("Opening the door");
       Serial.println(door_state);
     lcd.clear();// clear previous values from screen
@@ -311,7 +315,7 @@ if (((now.hour() >= wakehour) && (now.hour() < sleephour)) && (door_state != Doo
     lcd.print(now.minute(), DEC);    
   lcd.setCursor (10,0); //character 12, line 0
   lcd.print("Wake@ "); // print text
-  lcd.print(wakehour);
+  lcd.print(openHH);
   lcd.print(":00");
 //insert waketime variable here
 //2nd Row
@@ -322,7 +326,7 @@ if (((now.hour() >= wakehour) && (now.hour() < sleephour)) && (door_state != Doo
   lcd.print(RHStr); // print voltage
   lcd.setCursor (9,1); //character 9, line 1
   lcd.print("Sleep@"); // print V at the end of voltage  
-  lcd.print(sleephour);
+  lcd.print(closeHH);
   lcd.print(":00");
   //print the sleep time variable here
   //3rd Row
@@ -390,22 +394,7 @@ void close_door() {
   digitalWrite(doorin, HIGH);
   delay(75000);
   digitalWrite(doorin, LOW);
-  /*
-  while (door_state != Door_Closed)
-  {
-    check_door();
-      taskMillis = millis();
-    if (taskMillis - startMillis > 15000)
-    {
-      doorError = 1;
-        break; //taking too long.  something wrong
-    }
-      curMillis = millis();
-    singleStep();
-  }
-  //disable the stepper motor to conserve power
-//  digitalWrite(enablePin,HIGH); //HIGH is off and saving power
-*/
+
 door_state = Door_Closed;
   Serial.println("door closed") ;
 }
@@ -419,30 +408,24 @@ void open_door() {
   delay(75000);
   digitalWrite(doorout, LOW);
 door_state = Door_Open;
-  /*
-  while (door_state != Door_Open)
-  {
-    check_door();
-      taskMillis = millis();
-    if (taskMillis - startMillis > 15000)
-    {
-      doorError = 1;
-        break; //taking too long.  something wrong
-    }
-    curMillis = millis();
-    singleStep();
-  }
-  //disable the stepper motor to conserve power
-//  digitalWrite(enablePin,HIGH); //HIGH is off and saving power
-*/
+
 Serial.println("door opened") ;
 }
-void singleStep() {
- if (curMillis - prevStepMillis >= millisBetweenSteps) {
- prevStepMillis += millisBetweenSteps;
- //digitalWrite(stepPin, HIGH);
- //digitalWrite(stepPin, LOW);
- }
+bool isOpenTime() // returns TRUE when the door should be open, FALSE when the door should be closed.
+{  
+ DateTime now = rtc.now();  // if using timeRTC lib, i think
+int nowHH = now.hour(); int nowMM = now.minute(); int nowSS = now.second();  // put into local variables for easier read
 
+  if (( 
+        (nowHH>openHH)                           // it is after the wake hour
+        || ((nowHH==openHH) && (nowMM>openMM))   // OR it is the wake hour and after the wake minute
+      ) 
+      &&                                  // AND
+      (
+        (nowHH<closeHH)                           // it is before the sleep hour
+        || ((nowHH==closeHH) && (nowMM<closeMM))) // OR it IS the sleep hour and before the sleep minute
+      ) 
+  { return true; } else { return false; }
 }
+
 
