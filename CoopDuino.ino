@@ -49,7 +49,6 @@ LiquidCrystal_I2C lcd(0x27,20,4);  // set the LCD address to 0x27 for a 20 chars
 // uses I2C on pins A4 and A5
 DS1307 rtc;
 
-
 //DHT 22 (Temp and RH) Sensor1
 #define DHTPIN 6    // pin we're connected to
 #define DHTTYPE DHT11   // DHT 22  (AM2302)
@@ -113,7 +112,9 @@ int distance;
 
 //time
   int sleephour = 21;
+  int sleepmin = 30;
   int wakehour = 6 ;
+  int wakemin = 01;
 boolean FALSE = 0;
 boolean TRUE = 1;
 /********************************************************************/
@@ -272,8 +273,6 @@ if (((now.hour() >= wakehour) && (now.hour() < sleephour)) && (door_state != Doo
   lcd.print("Opening it... "); // print text
         open_door();//it's between wake and sleep hours and the door is closed. Opening door
 }
-
-// digitalWrite(enablePin,HIGH); //HIGH is off and servo is saving power
 
 //send all info via XBEE to Coordinator node
   Serial.println("RHIn,  tempIn,tempOut,tempWater,doorstate,lightstate, LDR reading, doorError,doorBlocked");
