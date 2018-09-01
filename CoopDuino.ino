@@ -78,7 +78,6 @@ int doorout = 8;
 //LDR
 #define LDRPIN A3
 
-
 /********************************************************************/
 //Variables
 
@@ -115,13 +114,12 @@ int distance;
   int closeMM = 30;
   int openHH = 6 ;
   int openMM = 01;
-
+    DateTime now;
 //
 boolean FALSE = 0;
 boolean TRUE = 1;
-/********************************************************************/
+/************SETUP AND INIT CODE ********************************/
 void setup() {
-  // put your setup code here, to run once.  Init sensors
     //Serial Port setup
   Serial.begin (9600);
 
@@ -131,7 +129,7 @@ lcd.init();      // initialize the lcd
   lcd.clear();// clear previous values from screen
   // 1st row
   lcd.setCursor (0,0); //character zero, line 0
-  lcd.print("CoopDuino 0.1"); // print text  
+  lcd.print("CoopDuino 0.2"); // print text  
     
 //setup DHT 22
     dht.begin();
@@ -148,7 +146,6 @@ sensors.begin();
   pinMode(doorin, OUTPUT); 
   pinMode(doorout, OUTPUT);
 
- 
 //setup distance sensor 
   pinMode(DS0TRIGPIN, OUTPUT); // Sets the trigPin as an Output
   pinMode(DS0ECHOPIN, INPUT); // Sets the echoPin as an Input
@@ -179,7 +176,7 @@ light_state = DARK;
 #define Door_transition 2
 door_state = Door_transition;
 }
-/********************************************************************/
+/*********** MAIN LOOPING SECTION ************************************************/
 void loop()
 {  
   //DHT 22 (Temp and RH) Sensor1
@@ -189,12 +186,14 @@ void loop()
 
 //RTC
     DateTime now = rtc.now();
+/*    
     Serial.print(now.hour(), DEC);
     Serial.print(':');
-     if(now.minute()<10)
-    Serial.print('0');
+    if(now.minute()<10)
+      Serial.print('0');
     Serial.print(now.minute(), DEC);
     Serial.println();
+*/
 
 // DS18b20
 // call sensors.requestTemperatures() to issue a global temperature 
@@ -228,13 +227,11 @@ if (distance < 38){
 }
 
 // Prints the distance on the Serial Monitor
-Serial.print("Distance in cm : ");
-Serial.println(distance);
+//Serial.print("Distance in cm : ");
+//Serial.println(distance);
 
 //NOW adjust door to reach desired states
-if ((
-    (now.hour() >= closeHH)
-    || (now.hour() < openHH )) && (door_state != Door_Closed)) //&& (doorBlocked == FALSE))
+if (!isOpenTime && (door_state != Door_Closed)) //&& (doorBlocked == FALSE))
 {
       Serial.println("it's sleep time and the door is open. Closing door");
       Serial.println(door_state);
@@ -256,11 +253,10 @@ if ((
    
       close_door(); //it's sleep time and the door is open. Closing door
 }
-if (((now.hour() >= openHH) && (now.hour() < closeHH)) && (door_state != Door_Open))
+if (isOpenTime && (door_state != Door_Open))
 {
-     Serial.print("Greater than openHH, less than closeHH, Door state not open ");
-     Serial.println("Opening the door");
-      Serial.println(door_state);
+  Serial.println("Opening the door");
+  Serial.println(door_state);
     lcd.clear();// clear previous values from screen
     lcd.setCursor (0,0); //character zero, line 0
     lcd.print("Time"); // print text  
@@ -275,7 +271,7 @@ if (((now.hour() >= openHH) && (now.hour() < closeHH)) && (door_state != Door_Op
   lcd.print("and door is closed "); // print text
     lcd.setCursor (0,3); //character 9, line 2
   lcd.print("Opening it... "); // print text
-        open_door();//it's between wake and sleep hours and the door is closed. Opening door
+     open_door();//it's between wake and sleep hours and the door is closed. Opening door
 }
 
 //send all info via XBEE to Coordinator node
@@ -387,14 +383,11 @@ if ((SN0_LDR <=400) && (SN0_LDR >=100)){light_state = TWILIGHT;}
 }
 void close_door() {
   startMillis = millis(); //when did we start?
-  //enable the stepper motor in the right direction
-  //make sure we arent running the door the other way
   digitalWrite(doorout, LOW);
   delay(1000);
   digitalWrite(doorin, HIGH);
   delay(75000);
   digitalWrite(doorin, LOW);
-
 door_state = Door_Closed;
   Serial.println("door closed") ;
 }
@@ -413,7 +406,8 @@ Serial.println("door opened") ;
 }
 bool isOpenTime() // returns TRUE when the door should be open, FALSE when the door should be closed.
 {  
- DateTime now = rtc.now();  // if using timeRTC lib, i think
+// done in the main loop do I really need it again??
+//    DateTime now = rtc.now();
 int nowHH = now.hour(); int nowMM = now.minute(); int nowSS = now.second();  // put into local variables for easier read
 
   if (( 
