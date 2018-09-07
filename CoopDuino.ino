@@ -299,7 +299,7 @@ if (isOpenTime && (door_state != Door_Open))
 
 //LCD DISPLAY SECTION
    
-  lcd.backlight(); //turn on backlight
+//  lcd.backlight(); //turn on backlight // commented out because it wakes the chickens
   lcd.clear();// clear previous values from screen
   // 1st row
   lcd.setCursor (0,0); //character zero, line 0
@@ -312,7 +312,8 @@ if (isOpenTime && (door_state != Door_Open))
   lcd.setCursor (10,0); //character 12, line 0
   lcd.print("Wake@ "); // print text
   lcd.print(openHH);
-  lcd.print(":00");
+  lcd.print(":");
+  lcd.print(openMM);
 //insert waketime variable here
 //2nd Row
   lcd.setCursor (0,1); //character 0, line 1
@@ -323,7 +324,8 @@ if (isOpenTime && (door_state != Door_Open))
   lcd.setCursor (9,1); //character 9, line 1
   lcd.print("Sleep@"); // print V at the end of voltage  
   lcd.print(closeHH);
-  lcd.print(":00");
+  lcd.print(":");
+  lcd.print(closeMM);
   //print the sleep time variable here
   //3rd Row
   lcd.setCursor (0,2); //character 0, line 2
