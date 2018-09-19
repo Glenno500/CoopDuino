@@ -81,7 +81,7 @@ int doorout = 8;
 /********************************************************************/
 //Variables
 
-int LoopWaitTime = (1*1000); //(in milliseconds There are 1000 milliseconds in a second.)
+int LoopWaitTime = (5*1000); //(in milliseconds There are 1000 milliseconds in a second.)
 
 String nodeID = "SN0";  // I'm sensor node zero  
 float SN0_RHIn;  //Stores humidity value
@@ -93,6 +93,7 @@ boolean SN0_dClosed; //Stores door closed value
 boolean doorError = false; //indicates if door is errored or not
 boolean doorBlocked = false; //indicates if door is blocked or not
 int SN0_LDR; //Store LDR value
+int DoorTransitTime = 75000;  // 75000 is proper time for my actuator
 
 //internal timing variables
 unsigned long prevStepMillis = 0;
@@ -112,8 +113,8 @@ int distance;
 //time
   int closeHH = 20;
   int closeMM = 30;
-  int openHH = 6 ;
-  int openMM = 01;
+  int openHH = 6;
+  int openMM = 15;
     DateTime now;
 //
 boolean FALSE = 0;
@@ -125,11 +126,11 @@ void setup() {
 
 // LCD Display
 lcd.init();      // initialize the lcd
-  lcd.backlight(); //turn on backlight
+  //lcd.backlight(); //turn on backlight // disabled because it wakes the chickens
   lcd.clear();// clear previous values from screen
   // 1st row
   lcd.setCursor (0,0); //character zero, line 0
-  lcd.print("CoopDuino 0.2"); // print text  
+  lcd.print("CoopDuino 0.3"); // print text  
     
 //setup DHT 22
     dht.begin();
@@ -176,6 +177,7 @@ light_state = DARK;
 #define Door_transition 2
 door_state = Door_transition;
 }
+
 /*********** MAIN LOOPING SECTION ************************************************/
 void loop()
 {  
@@ -186,52 +188,26 @@ void loop()
 
 //RTC
     DateTime now = rtc.now();
-/*    
-    Serial.print(now.hour(), DEC);
-    Serial.print(':');
-    if(now.minute()<10)
-      Serial.print('0');
-    Serial.print(now.minute(), DEC);
-    Serial.println();
-*/
 
 // DS18b20
 // call sensors.requestTemperatures() to issue a global temperature 
 // request to all devices on the bus 
  sensors.requestTemperatures(); 
  // Send the command to get temperature readings 
- SN0_tempOut = sensors.getTempCByIndex(1); //outside temp. 1 is first IC on the wire
  SN0_tempWater = sensors.getTempCByIndex(0); //water temp 0 is first IC on the wire
+ SN0_tempOut = sensors.getTempCByIndex(1); //outside temp. 1 is first IC on the wire
 
 // Door switches to verify door state
 //check_door();
+
 //LDR
-check_light();
+//check_light();
 
 //door check routine Any chickens in the way?
-doorBlocked = FALSE;
-// Clears the trigPin
-digitalWrite(DS0TRIGPIN, LOW);
-delayMicroseconds(2);
-// Sets the trigPin on HIGH state for 10 micro seconds
-digitalWrite(DS0TRIGPIN, HIGH);
-delayMicroseconds(10);
-digitalWrite(DS0TRIGPIN, LOW);
-// Reads the echoPin, returns the sound wave travel time in microseconds
-duration = pulseIn(DS0ECHOPIN, HIGH);
-// Calculating the distance
-distance= duration*0.034/2;
-if (distance < 38){
-  //someone in the way
-  doorBlocked = TRUE;
-}
-
-// Prints the distance on the Serial Monitor
-//Serial.print("Distance in cm : ");
-//Serial.println(distance);
+//check_doorblock();
 
 //NOW adjust door to reach desired states
-if (!isOpenTime && (door_state != Door_Closed)) //&& (doorBlocked == FALSE))
+if (!isOpenTime() && (door_state != Door_Closed)) //&& (doorBlocked == FALSE))
 {
       Serial.println("it's sleep time and the door is open. Closing door");
       Serial.println(door_state);
@@ -253,7 +229,7 @@ if (!isOpenTime && (door_state != Door_Closed)) //&& (doorBlocked == FALSE))
    
       close_door(); //it's sleep time and the door is open. Closing door
 }
-if (isOpenTime && (door_state != Door_Open))
+if (isOpenTime() && (door_state != Door_Open))
 {
   Serial.println("Opening the door");
   Serial.println(door_state);
@@ -275,7 +251,7 @@ if (isOpenTime && (door_state != Door_Open))
 }
 
 //send all info via XBEE to Coordinator node
-  Serial.println("RHIn,  tempIn,tempOut,tempWater,doorstate,lightstate, LDR reading, doorError,doorBlocked");
+/*  Serial.println("RHIn,  tempIn,tempOut,tempWater,doorstate,lightstate, LDR reading, doorError,doorBlocked");
   Serial.print('<');  //Starting symbol
   Serial.print(SN0_RHIn); //RHumidity inside
   Serial.print(",");
@@ -294,27 +270,45 @@ if (isOpenTime && (door_state != Door_Open))
   Serial.print(doorError);
   Serial.print(",");
   Serial.print(doorBlocked);
-  
+ 
   Serial.println('>');//Ending symbol
 
+ */
+ int nowHH = now.hour(); int nowMM = now.minute(); int nowSS = now.second(); 
+ Serial.print ("Now hour is ");
+ Serial.print (nowHH); 
+ Serial.print ("   Now minute is ");
+ Serial.println (nowMM);
+
+Serial.print ("Open hour is ");
+ Serial.print (openHH);
+ Serial.print ("   open minute is ");
+ Serial.println (openMM);
+ 
+Serial.print ("Close hour is ");
+ Serial.print (closeHH);
+ Serial.print ("   close minute is ");
+ Serial.println (closeMM);
+
+ Serial.print ("Is open time? ");
+ Serial.println (isOpenTime());
+
 //LCD DISPLAY SECTION
-   
-//  lcd.backlight(); //turn on backlight // commented out because it wakes the chickens
   lcd.clear();// clear previous values from screen
   // 1st row
   lcd.setCursor (0,0); //character zero, line 0
   lcd.print("Time"); // print text  
     lcd.print(now.hour(), DEC);
     lcd.print(':');
-    if(now.minute()<10)
-      lcd.print('0');
+    if(now.minute()<10){lcd.print('0');}
     lcd.print(now.minute(), DEC);    
   lcd.setCursor (10,0); //character 12, line 0
-  lcd.print("Wake@ "); // print text
+  lcd.print("Wake@"); // print text
+  if(openHH<9){lcd.print(" ");}
   lcd.print(openHH);
   lcd.print(":");
-  lcd.print(openMM);
-//insert waketime variable here
+  if(openMM<10){lcd.print('0');}
+  lcd.print(openMM);  //print the wake time variable here
 //2nd Row
   lcd.setCursor (0,1); //character 0, line 1
   lcd.print("RH "); // print text 
@@ -325,8 +319,7 @@ if (isOpenTime && (door_state != Door_Open))
   lcd.print("Sleep@"); // print V at the end of voltage  
   lcd.print(closeHH);
   lcd.print(":");
-  lcd.print(closeMM);
-  //print the sleep time variable here
+  lcd.print(closeMM);  //print the sleep time variable here
   //3rd Row
   lcd.setCursor (0,2); //character 0, line 2
   lcd.print("TmpIn "); 
@@ -355,8 +348,11 @@ if (isOpenTime && (door_state != Door_Open))
   dtostrf(SN0_tempOut, 3, 0, TempStr );
   lcd.print(TempStr); // print Outside temperature 
   lcd.print((char)223); // degree symbol
-  lcd.print("C LDR "); // degree symbol 
-  lcd.print(SN0_LDR); //print the LDR var
+  lcd.print("C H2O"); // 
+  dtostrf(SN0_tempWater, 3, 0, TempStr );
+  lcd.print(TempStr); //print the H2O tmp
+  lcd.print((char)223); // degree symbol
+  lcd.print("C"); //
 
 delay(LoopWaitTime); 
 }
@@ -385,33 +381,50 @@ if ((SN0_LDR <=400) && (SN0_LDR >=100)){light_state = TWILIGHT;}
 }
 void close_door() {
   startMillis = millis(); //when did we start?
-  digitalWrite(doorout, LOW);
+  digitalWrite(doorout, LOW);   //make sure we arent running the door the other way
   delay(1000);
   digitalWrite(doorin, HIGH);
-  delay(75000);
+  delay(DoorTransitTime);
   digitalWrite(doorin, LOW);
 door_state = Door_Closed;
   Serial.println("door closed") ;
 }
 void open_door() {
   startMillis = millis(); //when did we start?
-  //enable the stepper motor in the right direction
-  //make sure we arent running the door the other way
-  digitalWrite(doorin, LOW);
+  digitalWrite(doorin, LOW);   //make sure we arent running the door the other way
   delay(1000);
   digitalWrite(doorout, HIGH);
-  delay(75000);
+  delay(DoorTransitTime);
   digitalWrite(doorout, LOW);
 door_state = Door_Open;
 
 Serial.println("door opened") ;
 }
+
+/* bool check_doorblock() // returns TRUE when the door is blocked
+{
+  doorBlocked = FALSE;
+// Clears the trigPin
+digitalWrite(DS0TRIGPIN, LOW);
+delayMicroseconds(2);
+// Sets the trigPin on HIGH state for 10 micro seconds
+digitalWrite(DS0TRIGPIN, HIGH);
+delayMicroseconds(10);
+digitalWrite(DS0TRIGPIN, LOW);
+// Reads the echoPin, returns the sound wave travel time in microseconds
+duration = pulseIn(DS0ECHOPIN, HIGH);
+// Calculating the distance
+distance= duration*0.034/2;
+if (distance < 38){ //someone in the way
+  return = true; }else { return false; }
+}
+}
+*/
 bool isOpenTime() // returns TRUE when the door should be open, FALSE when the door should be closed.
 {  
 // done in the main loop do I really need it again??
-//    DateTime now = rtc.now();
+    DateTime now = rtc.now();
 int nowHH = now.hour(); int nowMM = now.minute(); int nowSS = now.second();  // put into local variables for easier read
-
   if (( 
         (nowHH>openHH)                           // it is after the wake hour
         || ((nowHH==openHH) && (nowMM>openMM))   // OR it is the wake hour and after the wake minute
@@ -419,9 +432,8 @@ int nowHH = now.hour(); int nowMM = now.minute(); int nowSS = now.second();  // 
       &&                                  // AND
       (
         (nowHH<closeHH)                           // it is before the sleep hour
-        || ((nowHH==closeHH) && (nowMM<closeMM))) // OR it IS the sleep hour and before the sleep minute
+        || ((nowHH==closeHH) && (nowMM<closeMM)) // OR it IS the sleep hour and before the sleep minute
+        )
       ) 
   { return true; } else { return false; }
 }
-
-
